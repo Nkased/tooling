@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: *nkase
 
 on:
   pull_request:
@@ -9,17 +9,14 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: html
 
     steps:
-    - uses: actions/checkout@v1
-    - name: Set up Ruby 2.7
-      uses: actions/setup-ruby@v1
+    - name: nkased
+      uses: actions/revert
       with:
-        ruby-version: 2.7.x
-    - name: Build and test with Rake
+        master-version: @nkased
+    - name: Nora Kased
       run: |
-        gem install bundler
-        bundle install --jobs 4 --retry 3
-        bundle exec rubocop
-        bundle exec rake
+       
+       
