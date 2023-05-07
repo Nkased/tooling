@@ -2,19 +2,23 @@
 
 # Check using the GitHub API whether the label in a repository is active
 module GitHubRepositoryLabelActiveCheck
-  def self.parse(result)
+  def self.parse(result, label_name)
     repository = result.data.repository
 
     # we should be checking for repository existence before this, but flag it anyway
     return { reason: 'repository-missing' } if repository.nil?
 
-    return { reason: 'missing' } if repository.label.nil?
+    return { reason: 'issues-disabled' } unless repository.has_issues_enabled
+
+    return { reason: 'missing', name: label_name } if repository.label.nil?
 
     label = repository.label
+    fork_count = repository.fork_count
+
     count = label.issues.total_count
     last_updated = (label.issues.nodes[0].updated_at if count.positive?)
 
-    { reason: 'found', name: label.name, url: label.url, count: count, last_updated: last_updated }
+    { reason: 'found', name: label.name, url: label.url, count:, fork_count:, last_updated: }
   end
 
   def self.run(project)
@@ -45,9 +49,9 @@ module GitHubRepositoryLabelActiveCheck
     yaml = project.read_yaml
     label = yaml['upforgrabs']['name']
 
-    variables = { owner: owner, name: name, label: label }
+    variables = { owner:, name:, label: }
 
-    parse(client.query(IssueCountForLabel, variables: variables))
+    parse(client.query(IssueCountForLabel, variables:), label)
   rescue StandardError => e
     { reason: 'error', error: e }
   end
@@ -75,39 +79,45 @@ module GitHubRepositoryLabelActiveCheck
 
     GraphQL::Client.dump_schema(http, 'graphql-schema.json') if ENV.fetch('WRITE_SCHEMA_TO_DISK', nil)
 
-    client = GraphQL::Client.new(schema: schema, execute: http)
+    client = GraphQL::Client.new(schema:, execute: http)
 
-    GitHubRepositoryLabelActiveCheck.const_set :RateLimitQuery, client.parse(<<-'GRAPHQL')
+    unless GitHubRepositoryLabelActiveCheck.const_defined?(:RateLimitQuery)
+      GitHubRepositoryLabelActiveCheck.const_set :RateLimitQuery, client.parse(<<-GRAPHQL)
       {
         rateLimit {
           remaining
         }
       }
-    GRAPHQL
+      GRAPHQL
+    end
 
-    GitHubRepositoryLabelActiveCheck.const_set :IssueCountForLabel, client.parse(<<-'GRAPHQL')
-      query($owner: String!, $name: String!, $label: String!) {
-        repository(owner: $owner, name: $name) {
-          label(name: $label) {
-            name
-            url
-            issues(states: OPEN, first: 1, orderBy: {field: UPDATED_AT, direction: DESC}) {
-              totalCount
-              nodes {
-                number
-                updatedAt
+    unless GitHubRepositoryLabelActiveCheck.const_defined?(:IssueCountForLabel)
+      GitHubRepositoryLabelActiveCheck.const_set :IssueCountForLabel, client.parse(<<-GRAPHQL)
+        query($owner: String!, $name: String!, $label: String!) {
+          repository(owner: $owner, name: $name) {
+            hasIssuesEnabled
+            forkCount
+            label(name: $label) {
+              name
+              url
+              issues(states: OPEN, first: 1, orderBy: {field: UPDATED_AT, direction: DESC}) {
+                totalCount
+                nodes {
+                  number
+                  updatedAt
+                }
               }
             }
           }
+          rateLimit {
+            limit
+            cost
+            remaining
+            resetAt
+          }
         }
-        rateLimit {
-          limit
-          cost
-          remaining
-          resetAt
-        }
-      }
-    GRAPHQL
+      GRAPHQL
+    end
 
     client
   end
