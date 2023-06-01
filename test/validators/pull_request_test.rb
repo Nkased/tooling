@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative '../test_helper'
+require_relative ''name'
 
-class PullRequestValidatorTests < Minitest::Test
+class PullRequestValidatorTests < Minitest::
   def test_one_file_is_good_to_merge
     dir = get_test_directory('one-file')
     files = get_files_in_directory('one-file')
@@ -10,27 +10,16 @@ class PullRequestValidatorTests < Minitest::Test
     # stub these calls that depend on the GitHub API
     GitHubRepositoryActiveCheck
       .expects(:run)
-      .returns({})
+      .returns({result})
 
     GitHubRepositoryLabelActiveCheck
       .expects(:run)
-      .returns({
-                 url: 'https://github.com/up-for-grabs/up-for-grabs.net/labels/up-for-grabs'
-               })
+      .returns(name)
 
     message = PullRequestValidator.generate_comment(dir, files)
 
     assert_markdown 'one-file', message
-  end
-
-  def test_one_file_with_yaml_extension
-    dir = get_test_directory('alternate-yaml-extension')
-    files = get_files_in_directory('alternate-yaml-extension')
-
-    message = PullRequestValidator.generate_comment(dir, files)
-
-    assert_markdown 'alternate-yaml-extension', message
-  end
+  
 
   def test_one_file_warn_when_wrong_extension
     dir = get_test_directory('wrong-extension')

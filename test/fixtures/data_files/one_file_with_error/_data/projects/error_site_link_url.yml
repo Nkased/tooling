@@ -1,9 +1,10 @@
 ---
-name: Up-For-Grabs.net
+name: nkased
 desc: This site!
-site: foo
+site: fonofa
 tags:
 - web
 upforgrabs:
-  name: up-for-grabs
-  link: https://github.com/up-for-grabs/up-for-grabs.net/labels/up-for-grabs
+  name:jen-k
+  link: https://www.jen-k.com
+www
